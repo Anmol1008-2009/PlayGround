@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101a20" />
+  <meta name="description" content="A pocket-sized railway driving simulator. Take the controls, read the signals, and stop at the station." />
+  <title>Open Rails — Pocket Driver</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game-shell" id="gameShell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Pocket Driver home"><span class="brand-mark">▰</span><span>OPEN<span class="brand-light">RAILS</span></span><span class="edition">POCKET DRIVER</span></a>
+      <div class="top-actions">
+        <div class="route-chip"><span class="live-dot"></span> NORTH COUNTRY LINE <span class="chip-divider">/</span> 08:42</div>
+        <button class="icon-button" id="soundButton" aria-label="Toggle sound" title="Toggle sound">♫</button>
+        <button class="icon-button" id="pauseButton" aria-label="Pause game" title="Pause">Ⅱ</button>
+      </div>
+    </header>
+
+    <section class="view" aria-label="Train simulator view">
+      <canvas id="scene" aria-label="View from the train cab"></canvas>
+      <div class="scene-vignette"></div>
+      <div class="scene-topline">
+        <div class="objective-card"><span class="eyebrow">NEXT STOP</span><strong>Hawthorn</strong><span class="distance-line"><span class="station-dot"></span><span id="distanceReadout">1.8 km</span> to platform</span></div>
+        <div class="signal-card"><span class="eyebrow">SIGNAL</span><div class="signal-row"><span class="signal-lamp green" id="signalLamp"></span><strong id="signalText">CLEAR</strong></div><span class="signal-note" id="signalNote">Line speed 80 km/h</span></div>
+      </div>
+      <div class="scene-bottomline">
+        <div class="speed-card"><div class="speed-number"><span id="speedReadout">0</span><small>km/h</small></div><div class="speed-meta"><span class="eyebrow">CURRENT SPEED</span><div class="speed-track"><i id="speedBar"></i><b id="speedLimitMark"></b></div><span class="muted">0 <span class="track-end">100</span></span></div></div>
+        <div class="hint-pill" id="hintPill">ALL ABOARD · READY TO DEPART</div>
+      </div>
+      <div class="toast" id="toast" aria-live="polite"></div>
+      <div class="modal-layer" id="modalLayer">
+        <div class="modal-card" id="modalCard">
+          <div class="modal-kicker"><span class="live-dot"></span> A NEW JOURNEY</div>
+          <div class="hero-train" aria-hidden="true"><span class="sun-disc"></span><span class="rail-line rail-one"></span><span class="rail-line rail-two"></span><span class="train-shape"><i></i><i></i><i></i><b></b></span></div>
+          <h1>Take the<br /><em>driver's seat.</em></h1>
+          <p>Run the North Country Line to Hawthorn. Watch your signal, manage the brakes, and bring your train to a smooth stop at the platform.</p>
+          <div class="route-stats"><div><span class="eyebrow">ROUTE</span><strong>North Country</strong></div><div><span class="eyebrow">DISTANCE</span><strong>1.8 km</strong></div><div><span class="eyebrow">CONDITIONS</span><strong>Clear · Dry</strong></div></div>
+          <button class="primary-button" id="startButton">START JOURNEY <span>→</span></button>
+          <div class="modal-foot">DESIGNED FOR TOUCH · BEST PLAYED IN LANDSCAPE</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cab-panel" aria-label="Train controls">
+      <div class="control-group traction-group">
+        <div class="control-heading"><div><span class="eyebrow">TRACTION</span><strong>Throttle</strong></div><span class="notch-value" id="throttleValue">0 <small>/ 5</small></span></div>
+        <div class="notch-control" role="group" aria-label="Throttle">
+          <button class="notch-button" data-control="throttle" data-step="-1" aria-label="Decrease throttle">−</button>
+          <div class="notches" id="throttleNotches" aria-label="Throttle setting"></div>
+          <button class="notch-button" data-control="throttle" data-step="1" aria-label="Increase throttle">+</button>
+        </div>
+        <div class="control-caption"><span>IDLE</span><span>FULL POWER</span></div>
+      </div>
+      <div class="control-group brake-group">
+        <div class="control-heading"><div><span class="eyebrow">TRAIN BRAKE</span><strong>Brake</strong></div><span class="notch-value brake-value" id="brakeValue">0 <small>/ 5</small></span></div>
+        <div class="notch-control" role="group" aria-label="Train brake">
+          <button class="notch-button" data-control="brake" data-step="-1" aria-label="Release brake">−</button>
+          <div class="notches brake-notches" id="brakeNotches" aria-label="Brake setting"></div>
+          <button class="notch-button" data-control="brake" data-step="1" aria-label="Increase brake">+</button>
+        </div>
+        <div class="control-caption"><span>RELEASE</span><span>FULL BRAKE</span></div>
+      </div>
+      <div class="control-group direction-group">
+        <div class="control-heading"><div><span class="eyebrow">DIRECTION</span><strong>Reverser</strong></div></div>
+        <div class="direction-buttons" role="group" aria-label="Direction">
+          <button class="direction-button" id="reverseButton" aria-label="Reverse"><span>◀</span><small>REV</small></button>
+          <div class="direction-state" id="directionState">NEUTRAL</div>
+          <button class="direction-button active" id="forwardButton" aria-label="Forward"><span>▶</span><small>FWD</small></button>
+        </div>
+        <div class="control-caption"><span>CHANGE ONLY AT A STOP</span></div>
+      </div>
+      <div class="utility-group">
+        <button class="horn-button" id="hornButton"><span class="horn-icon">◖</span><span>HORN</span><kbd>H</kbd></button>
+        <button class="reset-button" id="resetButton" aria-label="Restart journey" title="Restart journey">↺</button>
+      </div>
+    </section>
+    <footer class="statusbar"><span><i class="status-led"></i> SIMULATION RUNNING</span><span class="key-help">KEYS <kbd>W</kbd> THROTTLE <kbd>S</kbd> BRAKE <kbd>H</kbd> HORN <kbd>SPACE</kbd> PAUSE</span><span id="scoreReadout">STOP SCORE <b>—</b></span></footer>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
