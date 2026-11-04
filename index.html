@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#101a1d" />
+  <meta name="description" content="A touch-friendly railway cab driving game." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>Railway Driver</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Railway Driver home">
+        <span class="brand-mark" aria-hidden="true">R<span>↗</span></span>
+        <span><b>RAILWAY</b><small>DRIVER</small></span>
+      </a>
+      <div class="route-heading">
+        <span class="eyebrow">REGIONAL SERVICE · 04</span>
+        <h1>Coastal Line <span>›</span> Pinehaven</h1>
+      </div>
+      <div class="top-actions">
+        <span class="live-pill"><i></i> LIVE RUN</span>
+        <button id="pauseButton" class="icon-button" type="button" aria-label="Pause game" title="Pause">Ⅱ</button>
+      </div>
+    </header>
+
+    <section class="view-card" aria-label="Train cab view">
+      <canvas id="scene" aria-label="Railway landscape from the train cab"></canvas>
+      <div class="view-shade"></div>
+      <div class="scene-topline">
+        <div class="location"><span class="location-dot"></span><span id="locationText">OPEN COUNTRY</span></div>
+        <div class="weather"><span>☀</span> 18° <span class="weather-divider">·</span> CLEAR</div>
+      </div>
+      <div class="signal-chip"><span class="signal-lamp" id="signalLamp"></span><span><b id="signalName">GREEN</b><small id="signalCaption">PROCEED</small></span></div>
+      <div class="scene-bottomline"><span>TRACK 1 <b>·</b> STANDARD GAUGE</span><span id="clock">08:42:00</span></div>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <div id="pauseOverlay" class="overlay hidden">
+        <div class="overlay-card"><span class="overlay-icon">Ⅱ</span><h2>Run paused</h2><p>Your train is waiting right where you left it.</p><button id="resumeButton" class="primary-button">RESUME RUN <span>→</span></button></div>
+      </div>
+      <div id="finishOverlay" class="overlay hidden">
+        <div class="overlay-card"><span class="overlay-icon finish-icon">✦</span><span class="eyebrow">SERVICE COMPLETE</span><h2>All aboard, all arrived.</h2><p id="finishSummary">You completed the Coastal Line.</p><div class="final-score"><span>FINAL SCORE</span><b id="finalScore">0</b></div><button id="restartButton" class="primary-button">DRIVE AGAIN <span>↻</span></button></div>
+      </div>
+    </section>
+
+    <section class="journey-strip" aria-label="Journey progress">
+      <div class="journey-main">
+        <div class="journey-title"><span class="eyebrow">NEXT STOP</span><b id="nextStop">Pinehaven</b></div>
+        <div class="progress-wrap"><div class="progress-label"><span id="distanceText">2.4 km to station</span><span id="stopCount">STOP 1 OF 3</span></div><div class="progress-track"><div id="progressFill" class="progress-fill"></div><span class="progress-marker"></span></div></div>
+      </div>
+      <div class="score-block"><span class="eyebrow">DRIVER RATING</span><div><b id="score">100</b><span>PTS</span></div></div>
+      <div class="limit-block"><span class="eyebrow">SPEED LIMIT</span><div><b id="limit">80</b><span>KM/H</span></div></div>
+    </section>
+
+    <section class="controls-card" aria-label="Train controls">
+      <div class="controls-heading"><div><span class="eyebrow">LOCOMOTIVE CONTROLS</span><h2>Take the controls</h2></div><button id="helpButton" class="help-button" type="button"><span>?</span> HOW TO DRIVE</button></div>
+      <div class="control-grid">
+        <div class="drive-control throttle-control">
+          <div class="control-label"><span class="control-icon power-icon">ϟ</span><span><b>POWER</b><small>THROTTLE</small></span><strong id="throttleReadout">0<span>%</span></strong></div>
+          <input id="throttle" class="range power-range" type="range" min="0" max="100" value="0" aria-label="Throttle" />
+          <div class="range-ticks"><span>COAST</span><span>FULL POWER</span></div>
+        </div>
+        <div class="drive-control brake-control">
+          <div class="control-label"><span class="control-icon brake-icon">◉</span><span><b>BRAKE</b><small>AUTOMATIC</small></span><strong id="brakeReadout">0<span>%</span></strong></div>
+          <input id="brake" class="range brake-range" type="range" min="0" max="100" value="0" aria-label="Brake" />
+          <div class="range-ticks"><span>RELEASE</span><span>FULL BRAKE</span></div>
+        </div>
+        <div class="speed-dial" aria-label="Current speed"><span class="eyebrow">SPEED</span><div><b id="speed">0</b><span>km/h</span></div><small id="speedStatus">STANDING</small></div>
+        <div class="small-controls">
+          <button id="directionButton" class="direction-button" type="button" aria-label="Change direction"><span class="direction-icon">↑</span><span><b>FORWARD</b><small>REVERSER</small></span><span class="chevrons">⌃<br>⌄</span></button>
+          <button id="hornButton" class="horn-button" type="button" aria-label="Sound train horn"><span>◖</span><b>HORN</b><small>HOLD TO SOUND</small></button>
+        </div>
+      </div>
+      <div class="tip-row"><span class="tip-spark">✦</span><span id="tipText">Ease off the power early — smooth stops earn a better driver rating.</span><span class="keyboard-tip">KEYBOARD <kbd>↑</kbd> POWER <kbd>↓</kbd> BRAKE <kbd>H</kbd> HORN</span></div>
+    </section>
+    <footer><span>RAILWAY DRIVER <span class="footer-dot">·</span> A LITTLE JOURNEY, ONE STOP AT A TIME</span><span>TOUCH-READY CAB CONTROLS</span></footer>
+  </main>
+  <div id="helpDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="help-dialog"><button id="closeHelp" class="close-button" aria-label="Close help">×</button><span class="eyebrow">YOUR FIRST RUN</span><h2 id="helpTitle">Drive it like you mean it.</h2><p>Bring your train safely into each station and stop close to the platform marker. Three stops complete the service.</p><div class="help-steps"><div><i>01</i><span><b>Build speed</b><small>Raise POWER to accelerate. The train takes a moment to respond.</small></span></div><div><i>02</i><span><b>Watch the limit</b><small>Ease off before a speed restriction. The signal and limit change as you approach.</small></span></div><div><i>03</i><span><b>Make your stop</b><small>Apply BRAKE early, then release it to roll the last few metres. Stop within 25 m.</small></span></div></div><p class="keyboard-note">Keyboard: ↑ power · ↓ brake · ← / → direction · H horn · Space pause</p><button id="gotIt" class="primary-button">GOT IT <span>→</span></button></div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
