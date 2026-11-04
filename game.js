@@ -26,6 +26,8 @@ const state = {
   soundActive: true,
   nearStation: false,
   stopTriggered: false,
+  missedStation: false,
+  lastHudUpdate: 0,
 };
 
 const elements = {
@@ -56,13 +58,26 @@ const throttleNotches = Array.from(document.getElementById('throttleNotches').ch
 const brakeNotches = Array.from(document.getElementById('brakeNotches').children);
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const canvasSize = { width: 0, height: 0, ratio: 0 };
+const HUD_INTERVAL = 100;
+const SIMULATION_SPEED = 3;
 
 function resizeCanvas() {
-  const ratio = window.devicePixelRatio || 1;
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
   const rect = canvas.getBoundingClientRect();
-  canvas.width = Math.max(320, Math.floor(rect.width * ratio));
-  canvas.height = Math.max(220, Math.floor(rect.height * ratio));
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  const width = Math.max(1, Math.floor(rect.width));
+  const height = Math.max(1, Math.floor(rect.height));
+  const pixelWidth = Math.floor(width * ratio);
+  const pixelHeight = Math.floor(height * ratio);
+
+  canvasSize.width = width;
+  canvasSize.height = height;
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight || canvasSize.ratio !== ratio) {
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    canvasSize.ratio = ratio;
+  }
 }
 
 function updateNotches(container, value, maxValue) {
@@ -130,7 +145,11 @@ function showToast(message) {
   }, 1400);
 }
 
-function updateHUD() {
+function updateHUD(force = false) {
+  const now = performance.now();
+  if (!force && now - state.lastHudUpdate < HUD_INTERVAL) return;
+  state.lastHudUpdate = now;
+
   const throttleDisplay = state.throttle;
   const brakeDisplay = state.brake;
 
@@ -173,13 +192,13 @@ function updateControls() {
 function setThrottle(delta) {
   if (state.paused) return;
   state.throttle = clamp(state.throttle + delta, 0, 5);
-  updateHUD();
+  updateHUD(true);
 }
 
 function setBrake(delta) {
   if (state.paused) return;
   state.brake = clamp(state.brake + delta, 0, 5);
-  updateHUD();
+  updateHUD(true);
 }
 
 function setDirection(next) {
@@ -198,7 +217,7 @@ function handleStart() {
   state.paused = false;
   elements.modalLayer.classList.add('hidden');
   showToast('JOURNEY STARTED');
-  updateHUD();
+  updateHUD(true);
 }
 
 function togglePause() {
@@ -228,9 +247,10 @@ function resetJourney() {
   state.horn = false;
   state.nearStation = false;
   state.stopTriggered = false;
+  state.missedStation = false;
   elements.modalLayer.classList.remove('hidden');
   updateDirectionUI();
-  updateHUD();
+  updateHUD(true);
   updateControls();
   showToast('JOURNEY RESET');
 }
@@ -254,55 +274,37 @@ function trainPhysics(dt) {
   state.speed += acceleration * dt;
   state.speed = clamp(state.speed, 0, state.maxSpeed);
 
-  const stationApproach = state.distance > state.targetStop - 280;
-  if (stationApproach && !state.stopTriggered) {
-    const targetSpeed = clamp((state.targetStop - state.distance) / 12, 0, 30);
-    const delta = targetSpeed - state.speed;
-    state.speed += delta * 0.07;
+  if (state.speed > 0 && state.direction === 1) {
+    state.distance += (state.speed / 3.6) * dt;
+  } else if (state.speed > 0 && state.direction === -1) {
+    state.distance = Math.max(0, state.distance - (state.speed / 3.6) * dt);
   }
 
-  if (state.speed > 0 && state.distance >= 0) {
-    state.distance += state.speed * 0.25 * dt * 10;
-  }
-
-  if (state.distance >= state.targetStop && !state.stopTriggered) {
-    state.stopTriggered = true;
-    state.speed = 0;
-    state.score = 1000 - Math.round(Math.abs(state.speed) * 6) + state.throttle * 20;
-    showToast('ARRIVED AT HAWTHORN');
-    elements.hintPill.textContent = 'ARRIVED · STATION COMPLETE';
-    state.running = false;
-  }
-
-  if (state.speed < 0) {
-    state.speed = 0;
-  }
-
-  if (state.signalLevel === 'red' && !state.stopTriggered && state.distance >= state.targetStop - 120) {
-    if (state.speed > 4) {
-      state.speed -= 18 * dt;
+  if (!state.stopTriggered && state.direction === 1) {
+    const stopError = Math.abs(state.targetStop - state.distance);
+    if (state.distance >= state.targetStop - state.stopZone && state.speed <= 3) {
+      state.stopTriggered = true;
+      state.stopComplete = true;
+      state.score = Math.max(0, 1000 - Math.round(stopError * 6) - Math.round(state.speed * 20));
+      showToast('ARRIVED AT HAWTHORN');
+      elements.hintPill.textContent = 'ARRIVED · STATION COMPLETE';
+      state.running = false;
+    } else if (state.distance > state.targetStop + state.stopZone) {
+      state.missedStation = true;
+      state.stopTriggered = true;
+      state.score = 0;
+      elements.hintPill.textContent = 'STATION MISSED · RESET TO TRY AGAIN';
+      showToast('STATION MISSED');
+      state.running = false;
     }
-  }
-
-  if (state.speed >= 2 && state.brake > 0) {
-    state.speed -= state.brake * 0.9 * dt;
-  }
-
-  if (state.speed > 0 && state.throttle === 0 && state.brake === 0) {
-    state.speed -= 1.8 * dt;
-  }
-
-  if (state.distance > state.targetStop) {
-    state.score = Math.max(state.score, 1000 - Math.round(state.speed * 8));
   }
 
   state.progress = clamp(state.distance / state.journeyDistance, 0, 1);
 }
 
 function renderTrainScene() {
-  const rect = canvas.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
+  const width = canvasSize.width;
+  const height = canvasSize.height;
 
   ctx.clearRect(0, 0, width, height);
 
@@ -406,12 +408,16 @@ function renderTrainScene() {
 }
 
 function tick(timestamp) {
-  if (!state.lastTime) state.lastTime = timestamp;
-  const dt = Math.min((timestamp - state.lastTime) / 1000, 0.032);
+  if (state.lastTime && timestamp - state.lastTime < 32) {
+    requestAnimationFrame(tick);
+    return;
+  }
+
+  const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.05) : 0;
   state.lastTime = timestamp;
 
   if (state.running && !state.paused) {
-    trainPhysics(dt);
+    trainPhysics(dt * SIMULATION_SPEED);
   }
 
   updateHUD();
@@ -474,7 +480,7 @@ function bindControls() {
 function setup() {
   resizeCanvas();
   updateDirectionUI();
-  updateHUD();
+  updateHUD(true);
   updateControls();
   bindControls();
   requestAnimationFrame(tick);
